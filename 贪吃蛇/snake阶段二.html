@@ -76,6 +76,37 @@
   .diff-btn:hover{background:#343a48;color:#e6e6e6}
   .diff-btn.active{background:#1a3a2a;border-color:#2d5a3d;color:#4ade80;font-weight:bold}
   .diff-btn.disabled{opacity:.4;pointer-events:none}
+
+  /* 移动端虚拟方向键 */
+  .dpad{
+    display:none;margin-top:12px;user-select:none;-webkit-user-select:none;
+    touch-action:manipulation;
+  }
+  .dpad-row{display:flex;justify-content:center;gap:6px;margin-bottom:6px}
+  .dpad-btn{
+    width:56px;height:56px;border-radius:10px;border:1px solid #3a4050;
+    background:#1e2330;color:#8b93a7;font-size:22px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:background .1s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .dpad-btn:active,.dpad-btn.pressed{background:#343a48;color:#4ade80;border-color:#4ade80}
+  .dpad-center{width:56px;height:56px;border-radius:50%;background:transparent}
+
+  /* 响应式：手机竖屏 */
+  @media(max-width:700px){
+    body{justify-content:flex-start;padding:10px}
+    h1{font-size:17px;margin-bottom:10px}
+    .wrap{flex-direction:column;align-items:center;width:100%;max-width:420px}
+    .board{display:flex;flex-direction:column;align-items:center}
+    canvas{width:100%;max-width:380px;height:auto;aspect-ratio:1/1}
+    .panel{width:100%;max-width:380px}
+    .dpad{display:block}
+    .dpad-btn{width:48px;height:48px;font-size:20px;border-radius:8px}
+    .dpad-center{width:48px;height:48px}
+    button{padding:11px;font-size:15px}
+    .diff-btn{padding:8px 0;font-size:13px}
+  }
 </style>
 </head>
 <body>
@@ -88,6 +119,24 @@
     <div class="mask" id="mask">
       <div class="big" id="maskTitle">游戏结束</div>
       <div class="small" id="maskText">点击"重新开始"再来一局</div>
+    </div>
+    <!-- 移动端虚拟方向键（桌面端隐藏） -->
+    <div class="dpad" id="dpad">
+      <div class="dpad-row">
+        <div class="dpad-center"></div>
+        <div class="dpad-btn" data-dir="up">▲</div>
+        <div class="dpad-center"></div>
+      </div>
+      <div class="dpad-row">
+        <div class="dpad-btn" data-dir="left">◄</div>
+        <div class="dpad-btn" data-dir="space">⏯</div>
+        <div class="dpad-btn" data-dir="right">►</div>
+      </div>
+      <div class="dpad-row">
+        <div class="dpad-center"></div>
+        <div class="dpad-btn" data-dir="down">▼</div>
+        <div class="dpad-center"></div>
+      </div>
     </div>
   </div>
 
@@ -113,16 +162,11 @@
     <button id="btnReset">重新开始</button>
     <button id="btnAI" class="btn-ai">🤖 AI 自动演示</button>
 
-    <div class="ai-progress" id="aiBox">
-      <div class="label">🤖 AI 本轮已吃</div>
-      <div class="value"><span id="aiEaten">0</span> / <span id="aiTarget">15</span></div>
-      <div class="bar-bg"><div class="bar-fill" id="aiBar" style="width:0%"></div></div>
-      <div class="done" id="aiDone"></div>
-    </div>
-
+    <!-- 提示移到这里，不用滚动就能看到 -->
     <div class="tip">
       <div>🎮 <b>方向键</b> 或 <b>WASD</b> 控制方向</div>
       <div>⏸ <b>空格</b> 开始 / 暂停</div>
+      <div>📱 手机上使用下方 <b>虚拟方向键</b></div>
       <div>⚡ 上方选择难度，越难速度越快、分数倍率越高</div>
       <div>⏩ 每吃 5 个食物，蛇自动加速</div>
       <div>🧱 <b>蛇短时</b>（&lt; 8 节）场上会出现障碍物，碰到蛇变短</div>
@@ -130,6 +174,14 @@
       <div>🎯 AI 目标：连续吃完 <b>15</b> 个食物不死</div>
       <div>❌ <b>撞墙</b> 或 <b>撞到自己</b> 即结束</div>
       <div>🍎 吃一个食物 <b>+10 分</b>（× 难度倍率），蛇身变长 1 节</div>
+    </div>
+
+    <!-- AI 进度放最底部（AI 模式下才重要） -->
+    <div class="ai-progress" id="aiBox" style="margin-top:12px;">
+      <div class="label">🤖 AI 本轮已吃</div>
+      <div class="value"><span id="aiEaten">0</span> / <span id="aiTarget">15</span></div>
+      <div class="bar-bg"><div class="bar-fill" id="aiBar" style="width:0%"></div></div>
+      <div class="done" id="aiDone"></div>
     </div>
   </div>
 </div>
@@ -724,6 +776,46 @@ document.addEventListener('keydown', e => {
 
   nextDir = nd;
   e.preventDefault();
+});
+
+/* ---------- 13.5 移动端虚拟方向键（触摸） ---------- */
+const DPAD_MAP = {
+  up:    { x: 0, y:-1 },
+  down:  { x: 0, y: 1 },
+  left:  { x:-1, y: 0 },
+  right: { x: 1, y: 0 }
+};
+
+document.querySelectorAll('.dpad-btn').forEach(btn => {
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 中间按钮 = 开始/暂停
+    if (btn.dataset.dir === 'space') {
+      if (!alive) { reset(); start(); }
+      else if (running) { stop(); setState('已暂停'); }
+      else { start(); }
+      return;
+    }
+
+    // AI 模式下禁止方向输入
+    if (aiMode) return;
+
+    const nd = DPAD_MAP[btn.dataset.dir];
+    if (!nd) return;
+    if (snake.length > 1 && nd.x === -dir.x && nd.y === -dir.y) return;
+    nextDir = nd;
+
+    // 按压反馈
+    btn.classList.add('pressed');
+    setTimeout(() => btn.classList.remove('pressed'), 120);
+  });
+
+  // 阻止双击缩放
+  btn.addEventListener('touchstart', e => {
+    e.preventDefault();
+  });
 });
 
 /* ---------- 14. 启动 ---------- */
