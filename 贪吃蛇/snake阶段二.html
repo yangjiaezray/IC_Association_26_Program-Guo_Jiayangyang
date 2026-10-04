@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>贪吃蛇 · 阶段二（AI 自动演示）</title>
+<title>贪吃蛇 · 阶段二（难度选择 + AI 自动演示）</title>
 <style>
   *{box-sizing:border-box}
   body{
@@ -66,11 +66,21 @@
     height:100%;background:#4ade80;border-radius:3px;transition:width .2s;
   }
   .ai-progress .done{color:#fbbf24;font-size:12px;margin-top:4px}
+
+  .diff-row{display:flex;gap:4px;margin-bottom:12px}
+  .diff-btn{
+    flex:1;padding:6px 0;cursor:pointer;font-size:12px;
+    background:#2a2f3a;color:#8b93a7;border:1px solid #3a4050;border-radius:5px;
+    transition:all .15s;
+  }
+  .diff-btn:hover{background:#343a48;color:#e6e6e6}
+  .diff-btn.active{background:#1a3a2a;border-color:#2d5a3d;color:#4ade80;font-weight:bold}
+  .diff-btn.disabled{opacity:.4;pointer-events:none}
 </style>
 </head>
 <body>
 
-<h1>🐍 贪吃蛇 · 阶段二（手动 + AI 自动演示）</h1>
+<h1>🐍 贪吃蛇 · 阶段二（难度选择 + 手动 + AI）</h1>
 
 <div class="wrap">
   <div class="board">
@@ -88,7 +98,16 @@
     <div class="row"><span>最高分</span><span class="val" id="best">0</span></div>
     <div class="row"><span>状态</span><span class="val" id="state">待开始</span></div>
 
+    <div class="row"><span>当前速度</span><span class="val" id="speed">120ms</span></div>
+
     <hr style="border:none;border-top:1px solid #2a2f3a;margin:14px 0">
+
+    <div class="diff-row" id="diffRow">
+      <button class="diff-btn" data-diff="easy">🟢 简单</button>
+      <button class="diff-btn active" data-diff="normal">🟡 普通</button>
+      <button class="diff-btn" data-diff="hard">🟠 困难</button>
+      <button class="diff-btn" data-diff="hell">🔴 地狱</button>
+    </div>
 
     <button id="btnStart">开始 / 暂停</button>
     <button id="btnReset">重新开始</button>
@@ -104,10 +123,13 @@
     <div class="tip">
       <div>🎮 <b>方向键</b> 或 <b>WASD</b> 控制方向</div>
       <div>⏸ <b>空格</b> 开始 / 暂停</div>
+      <div>⚡ 上方选择难度，越难速度越快、分数倍率越高</div>
+      <div>⏩ 每吃 5 个食物，蛇自动加速</div>
+      <div>🧱 <b>蛇短时</b>（&lt; 8 节）场上会出现障碍物，碰到蛇变短</div>
       <div>🤖 <b>AI 演示</b> 自动寻路吃食物</div>
       <div>🎯 AI 目标：连续吃完 <b>15</b> 个食物不死</div>
       <div>❌ <b>撞墙</b> 或 <b>撞到自己</b> 即结束</div>
-      <div>🍎 吃一个食物 <b>+10 分</b>，蛇身变长 1 节</div>
+      <div>🍎 吃一个食物 <b>+10 分</b>（× 难度倍率），蛇身变长 1 节</div>
     </div>
   </div>
 </div>
@@ -134,8 +156,23 @@ const COLOR = {
   grid:  '#13161d',
   snake: '#4ade80',
   head:  '#22c55e',
-  food:  '#f87171'
+  food:  '#f87171',
+  wall:  '#3a3050'      // 障碍物颜色
 };
+
+/* ---------- 2.5 难度配置 ---------- */
+const DIFFICULTY = {
+  easy:   { label: '简单', speed: 160, multiplier: 0.8, emoji: '🟢' },
+  normal: { label: '普通', speed: 120, multiplier: 1.0, emoji: '🟡' },
+  hard:   { label: '困难', speed:  80, multiplier: 1.5, emoji: '🟠' },
+  hell:   { label: '地狱', speed:  50, multiplier: 2.0, emoji: '🔴' }
+};
+const SPEED_ACCEL   = 5;      // 每吃 5 个食物，速度加快 5ms
+const SPEED_MIN     = 30;     // 速度下限（ms）
+const OBSTACLE_COUNT = 3;     // 障碍物数量
+const OBSTACLE_MAX_LEN = 8;  // 蛇长 ≥ 此值后清除障碍物
+const OBSTACLE_SHRINK = 2;   // 碰到障碍物缩短的节数
+const OBSTACLE_PENALTY = 10; // 碰到障碍物扣分
 
 /* ---------- 3. 游戏状态变量 ---------- */
 let snake    = [];
@@ -147,7 +184,7 @@ let eaten    = 0;
 let alive    = true;
 let running  = false;
 let timer    = null;
-let best     = Number(localStorage.getItem('snake_best') || 0);
+let best     = Number(localStorage.getItem('snake_best_normal') || 0);
 
 /* ---------- 3.5 AI 状态变量 ---------- */
 let aiMode         = false;  // AI 模式开关
@@ -155,9 +192,13 @@ const AI_TARGET    = 15;     // AI 目标：连续吃完 15 个食物
 let aiEatenThisRun = 0;      // AI 本轮连续吃掉的食物数
 let aiReachedGoal  = false;  // AI 已达成 15 目标
 let aiStepsNoFood  = 0;      // AI 连续多少步没吃到食物（死锁检测）
-const AI_SPEED     = 70;     // AI 模式每步间隔（毫秒），比手动的 120ms 略快
-const MANUAL_SPEED = 120;    // 手动模式每步间隔
+const AI_SPEED     = 70;     // AI 模式每步间隔（毫秒）
 const AI_STARVE_LIMIT = 350; // 连续 350 步没吃到食物 → 启动饥饿模式
+
+/* ---------- 3.6 手动模式增强变量 ---------- */
+let currentDiff = 'normal';               // 当前难度
+let obstacles   = [];                      // 障碍物数组
+let currentSpeed = DIFFICULTY.normal.speed; // 当前实际速度（会渐进加速）
 
 /* ---------- 4. 小工具函数 ---------- */
 const key    = p => p.x + ',' + p.y;
@@ -166,7 +207,7 @@ const inside = p => p.x >= 0 && p.x < COLS && p.y >= 0 && p.y < ROWS;
 
 /* ---------- 5. 随机生成食物 ---------- */
 function makeFood() {
-  const occupied = new Set(snake.map(key));
+  const occupied = new Set([...snake.map(key), ...obstacles.map(key)]);
   const free = [];
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
@@ -177,11 +218,29 @@ function makeFood() {
   return free[Math.floor(Math.random() * free.length)];
 }
 
+/* ---------- 5.5 生成障碍物 ---------- */
+function generateObstacles() {
+  obstacles = [];
+  if (aiMode || snake.length >= OBSTACLE_MAX_LEN) return;
+  const forbidden = new Set([...snake.map(key), key(food)]);
+  let tries = 0;
+  while (obstacles.length < OBSTACLE_COUNT && tries < 200) {
+    tries++;
+    const p = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+    if (!forbidden.has(key(p))) {
+      obstacles.push(p);
+      forbidden.add(key(p));
+    }
+  }
+}
+
 /* ---------- 6. 初始化 / 重置一局 ---------- */
 function reset() {
   snake    = [{ x:10, y:10 }, { x:9, y:10 }, { x:8, y:10 }];
   dir      = { x:1, y:0 };
   nextDir  = { x:1, y:0 };
+  currentSpeed = DIFFICULTY[currentDiff].speed;
+  generateObstacles();
   food     = makeFood();
   score    = 0;
   eaten    = 0;
@@ -190,6 +249,7 @@ function reset() {
   aiEatenThisRun = 0;
   aiReachedGoal  = false;
   aiStepsNoFood  = 0;
+  best = Number(localStorage.getItem('snake_best_' + currentDiff) || 0);
   stop();
   $('mask').classList.remove('show');
   updateHUD();
@@ -219,6 +279,21 @@ function draw() {
     ctx.fill();
   }
 
+  // 障碍物
+  obstacles.forEach(o => {
+    ctx.fillStyle = COLOR.wall;
+    ctx.fillRect(o.x*CELL + 2, o.y*CELL + 2, CELL - 4, CELL - 4);
+    // 画叉号
+    ctx.strokeStyle = '#6b5b7a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(o.x*CELL + 5, o.y*CELL + 5);
+    ctx.lineTo(o.x*CELL + CELL - 5, o.y*CELL + CELL - 5);
+    ctx.moveTo(o.x*CELL + CELL - 5, o.y*CELL + 5);
+    ctx.lineTo(o.x*CELL + 5, o.y*CELL + CELL - 5);
+    ctx.stroke();
+  });
+
   snake.forEach((s, i) => {
     ctx.fillStyle = (i === 0) ? COLOR.head : COLOR.snake;
     ctx.fillRect(s.x*CELL + 1, s.y*CELL + 1, CELL - 2, CELL - 2);
@@ -236,20 +311,55 @@ function step() {
   const body = snake.slice(0, -1);
   if (body.some(s => eq(s, head))) return gameOver('撞到自己了');
 
+  // 障碍物碰撞检测（手动模式）
+  const hitObs = obstacles.find(o => eq(head, o));
+  if (hitObs && !aiMode) {
+    score = Math.max(0, score - OBSTACLE_PENALTY);
+    // 蛇变短
+    const shrink = Math.min(OBSTACLE_SHRINK, snake.length - 1);
+    for (let i = 0; i < shrink; i++) snake.pop();
+    // 移除被碰到的障碍物
+    obstacles = obstacles.filter(o => o !== hitObs);
+    // 蛇变短后检查是否该清除所有障碍物
+    if (snake.length >= OBSTACLE_MAX_LEN) obstacles = [];
+    updateHUD();
+    draw();
+    return; // 碰障碍物不移动蛇头，在原地缩短
+  }
+
   snake.unshift(head);
 
   if (eq(head, food)) {
-    score += 10;
+    const mult = aiMode ? 1 : DIFFICULTY[currentDiff].multiplier;
+    const points = Math.round(10 * mult);
+    score += points;
     eaten += 1;
     aiEatenThisRun += 1;
-    aiStepsNoFood = 0;        // 吃到食物，重置饥饿计数器
+    aiStepsNoFood = 0;
     if (!aiReachedGoal && aiEatenThisRun >= AI_TARGET) {
       aiReachedGoal = true;
     }
     if (score > best) {
       best = score;
-      localStorage.setItem('snake_best', best);
+      localStorage.setItem('snake_best_' + currentDiff, best);
     }
+
+    // 渐进加速（手动模式）
+    if (!aiMode) {
+      const baseSpeed = DIFFICULTY[currentDiff].speed;
+      const accelSteps = Math.floor(eaten / SPEED_ACCEL);
+      const newSpeed = Math.max(SPEED_MIN, baseSpeed - accelSteps * SPEED_ACCEL);
+      if (newSpeed !== currentSpeed) {
+        currentSpeed = newSpeed;
+        setTimerSpeed(currentSpeed);
+      }
+      // 吃食物后重检障碍物
+      if (snake.length >= OBSTACLE_MAX_LEN) obstacles = [];
+      else if (obstacles.length === 0 && snake.length < OBSTACLE_MAX_LEN) {
+        generateObstacles();
+      }
+    }
+
     food = makeFood();
     if (food === null) {
       stop();
@@ -263,7 +373,7 @@ function step() {
     }
   } else {
     snake.pop();
-    if (aiMode) aiStepsNoFood++;  // AI 模式下，没吃到就累计饥饿
+    if (aiMode) aiStepsNoFood++;
   }
 
   updateHUD();
@@ -289,10 +399,20 @@ function gameOver(reason) {
 }
 
 /* ---------- 10. 开始 / 停止 ---------- */
+function setTimerSpeed(newSpeed) {
+  if (!running) return;
+  clearInterval(timer);
+  currentSpeed = newSpeed;
+  timer = setInterval(() => {
+    if (aiMode && alive && running) aiDecide();
+    step();
+  }, currentSpeed);
+}
+
 function start() {
   if (running || !alive) return;
   running = true;
-  const interval = aiMode ? AI_SPEED : MANUAL_SPEED;
+  const interval = aiMode ? AI_SPEED : currentSpeed;
   timer = setInterval(() => {
     if (aiMode && alive && running) aiDecide();
     step();
@@ -311,6 +431,7 @@ function updateHUD() {
   $('eaten').textContent = eaten;
   $('len').textContent   = snake.length;
   $('best').textContent  = best;
+  $('speed').textContent = (aiMode ? AI_SPEED : currentSpeed) + 'ms';
 }
 
 function updateAIHUD() {
@@ -526,6 +647,29 @@ function aiDecide() {
    ========================================================================== */
 
 /* ---------- 12. 按钮事件 ---------- */
+function setDifficulty(diff) {
+  if (aiMode || running) return; // AI 模式或游戏中不允许切换难度
+  currentDiff = diff;
+  // 更新按钮状态
+  document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.diff === diff);
+  });
+  // 已死亡时切换难度自动重置
+  if (!alive) reset();
+  else {
+    // 活着的状态：更新速度和最高分
+    currentSpeed = DIFFICULTY[diff].speed;
+    best = Number(localStorage.getItem('snake_best_' + diff) || 0);
+    generateObstacles();
+    updateHUD();
+    draw();
+  }
+}
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.onclick = () => setDifficulty(btn.dataset.diff);
+});
+
 $('btnStart').onclick = () => {
   if (!alive) { reset(); start(); return; }
   if (running) { stop(); setState('已暂停'); }
@@ -539,16 +683,17 @@ $('btnAI').onclick = () => {
   const btn = $('btnAI');
 
   if (aiMode) {
-    // 开启 AI 模式
     btn.textContent = '🤖 AI 运行中（点击关闭）';
     btn.classList.add('active');
-    // 重置并自动开始
+    // 锁定难度按钮
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.add('disabled'));
     reset();
     start();
   } else {
-    // 关闭 AI 模式
     btn.textContent = '🤖 AI 自动演示';
     btn.classList.remove('active');
+    // 解锁难度按钮
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('disabled'));
     reset();
   }
 };
