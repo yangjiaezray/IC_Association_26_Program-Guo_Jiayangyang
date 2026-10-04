@@ -160,7 +160,7 @@
 <h1>🐍 贪吃蛇 · 阶段二（难度选择 + 手动 + AI）</h1>
 
 <div class="wrap">
-  <!-- 左栏：操作提示 -->
+  <!-- 左栏：操作提示 + 战绩 -->
   <div class="tips-col">
     <div class="tip-title">🎮 操作说明</div>
     <div class="tip">
@@ -176,6 +176,15 @@
       <div>🎯 AI 目标：连吃 <b>15</b> 个食物</div>
       <div>❌ 撞墙/撞自己即结束</div>
       <div>🍎 食物 +10 分 × 难度倍率</div>
+    </div>
+    <!-- 战绩面板（左栏底部，与右栏长度匹配） -->
+    <div class="stats-box" id="statsBox" style="margin-top:10px">
+      <div class="st-title">📊 最近战绩（10局）<span class="stats-reset" id="btnStatsReset">清空</span></div>
+      <div class="stats-empty" id="statsEmpty">暂无战绩记录</div>
+      <table class="stats-table" id="statsTable" style="display:none">
+        <thead><tr><th>#</th><th>分数</th><th>食物</th><th>难度</th><th>结果</th></tr></thead>
+        <tbody id="statsBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -251,6 +260,9 @@
       <button class="skin-btn" data-skin="sakura"><span class="swatch" style="background:#f472b6"></span>樱花粉</button>
       <button class="skin-btn" data-skin="cyber"><span class="swatch" style="background:#00ff88"></span>赛博</button>
     </div>
+    <div class="skin-row" id="skinRow3" style="margin-top:2px">
+      <button class="skin-btn" data-skin="wangzhe"><span class="swatch" style="background:#ffd700"></span>👑王者</button>
+    </div>
 
     <!-- 背景模式 -->
     <div class="tip" style="font-size:11px;color:#8b93a7;margin-bottom:6px;">🖼 画布背景</div>
@@ -260,18 +272,6 @@
       <button class="bg-btn" data-bg="dots">圆点</button>
       <button class="bg-btn" data-bg="checker">棋盘</button>
       <button class="bg-btn" data-bg="noise">噪点</button>
-    </div>
-
-    <hr style="border:none;border-top:1px solid #2a2f3a;margin:10px 0">
-
-    <!-- 多局战绩 -->
-    <div class="stats-box" id="statsBox">
-      <div class="st-title">📊 最近战绩（10局）<span class="stats-reset" id="btnStatsReset">清空</span></div>
-      <div class="stats-empty" id="statsEmpty">暂无战绩记录</div>
-      <table class="stats-table" id="statsTable" style="display:none">
-        <thead><tr><th>#</th><th>分数</th><th>食物</th><th>难度</th><th>结果</th></tr></thead>
-        <tbody id="statsBody"></tbody>
-      </table>
     </div>
   </div>
 </div>
@@ -309,7 +309,8 @@ const SKINS = {
   sunset:  { name:'日落橙', bg:'#1a1210', grid:'#241a15', snake:'#fb923c', head:'#f97316', food:'#facc15', wall:'#4a3028' },
   purple:  { name:'紫夜',   bg:'#120f1a', grid:'#1a1525', snake:'#a78bfa', head:'#8b5cf6', food:'#f472b6', wall:'#2a2040' },
   sakura:  { name:'樱花粉', bg:'#1a1218', grid:'#241820', snake:'#f472b6', head:'#ec4899', food:'#a78bfa', wall:'#3a2535' },
-  cyber:   { name:'赛博',   bg:'#0a0a0a', grid:'#111a11', snake:'#00ff88', head:'#00cc66', food:'#ff00ff', wall:'#1a1a2e' }
+  cyber:   { name:'赛博',   bg:'#0a0a0a', grid:'#111a11', snake:'#00ff88', head:'#00cc66', food:'#ff00ff', wall:'#1a1a2e' },
+  wangzhe: { name:'王者',   bg:'#1a0c0c', grid:'#2a1515', snake:'#ffd700', head:'#ffb800', food:'#ff4444', wall:'#3a2020' }
 };
 
 /* ---------- 2.2 背景干扰模式 ---------- */
