@@ -87,6 +87,42 @@
   .diff-btn.active{background:#1a3a2a;border-color:#2d5a3d;color:#4ade80;font-weight:bold}
   .diff-btn.disabled{opacity:.4;pointer-events:none}
 
+  /* 皮肤选择器 */
+  .skin-row{display:flex;gap:4px;margin-bottom:12px}
+  .skin-btn{
+    flex:1;padding:6px 0;cursor:pointer;font-size:10px;text-align:center;
+    background:#2a2f3a;color:#8b93a7;border:1px solid #3a4050;border-radius:5px;
+    transition:all .15s;position:relative;
+  }
+  .skin-btn:hover{background:#343a48;color:#e6e6e6}
+  .skin-btn.active{border-color:#4ade80;color:#4ade80;font-weight:bold}
+  .skin-btn .swatch{display:block;width:16px;height:16px;border-radius:50%;margin:0 auto 3px}
+
+  /* 背景模式选择器 */
+  .bg-row{display:flex;gap:4px;margin-bottom:12px}
+  .bg-btn{
+    flex:1;padding:5px 0;cursor:pointer;font-size:10px;text-align:center;
+    background:#2a2f3a;color:#8b93a7;border:1px solid #3a4050;border-radius:5px;
+    transition:all .15s;
+  }
+  .bg-btn:hover{background:#343a48;color:#e6e6e6}
+  .bg-btn.active{background:#1a3a2a;border-color:#2d5a3d;color:#fbbf24}
+
+  /* 战绩面板 */
+  .stats-box{
+    background:#171a21;border:1px solid #2a2f3a;border-radius:8px;
+    padding:10px 12px;margin-top:12px;max-height:160px;overflow-y:auto;
+  }
+  .stats-box .st-title{font-size:12px;color:#4ade80;font-weight:bold;margin-bottom:6px}
+  .stats-table{width:100%;font-size:10px;border-collapse:collapse}
+  .stats-table th{color:#8b93a7;font-weight:normal;padding:3px 4px;border-bottom:1px solid #2a2f3a;text-align:left}
+  .stats-table td{color:#c0c7d3;padding:3px 4px;border-bottom:1px solid #1e2230}
+  .stats-table .st-win{color:#4ade80}
+  .stats-table .st-lose{color:#f87171}
+  .stats-reset{font-size:10px;color:#8b93a7;cursor:pointer;float:right;margin-top:4px}
+  .stats-reset:hover{color:#f87171}
+  .stats-empty{font-size:11px;color:#5a6070;text-align:center;padding:8px}
+
   /* 移动端虚拟方向键（始终可见，桌面亦可点击） */
   .dpad{
     margin-top:10px;user-select:none;-webkit-user-select:none;
@@ -200,6 +236,43 @@
       <div class="bar-bg"><div class="bar-fill" id="aiBar" style="width:0%"></div></div>
       <div class="done" id="aiDone"></div>
     </div>
+
+    <hr style="border:none;border-top:1px solid #2a2f3a;margin:12px 0">
+
+    <!-- 皮肤选择 -->
+    <div class="tip" style="font-size:11px;color:#8b93a7;margin-bottom:6px;">🎨 皮肤主题</div>
+    <div class="skin-row" id="skinRow">
+      <button class="skin-btn active" data-skin="classic"><span class="swatch" style="background:#4ade80"></span>经典绿</button>
+      <button class="skin-btn" data-skin="ocean"><span class="swatch" style="background:#38bdf8"></span>海洋蓝</button>
+      <button class="skin-btn" data-skin="sunset"><span class="swatch" style="background:#fb923c"></span>日落橙</button>
+    </div>
+    <div class="skin-row" id="skinRow2">
+      <button class="skin-btn" data-skin="purple"><span class="swatch" style="background:#a78bfa"></span>紫夜</button>
+      <button class="skin-btn" data-skin="sakura"><span class="swatch" style="background:#f472b6"></span>樱花粉</button>
+      <button class="skin-btn" data-skin="cyber"><span class="swatch" style="background:#00ff88"></span>赛博</button>
+    </div>
+
+    <!-- 背景模式 -->
+    <div class="tip" style="font-size:11px;color:#8b93a7;margin-bottom:6px;">🖼 画布背景</div>
+    <div class="bg-row" id="bgRow">
+      <button class="bg-btn active" data-bg="none">纯净</button>
+      <button class="bg-btn" data-bg="stripes">条纹</button>
+      <button class="bg-btn" data-bg="dots">圆点</button>
+      <button class="bg-btn" data-bg="checker">棋盘</button>
+      <button class="bg-btn" data-bg="noise">噪点</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #2a2f3a;margin:10px 0">
+
+    <!-- 多局战绩 -->
+    <div class="stats-box" id="statsBox">
+      <div class="st-title">📊 最近战绩（10局）<span class="stats-reset" id="btnStatsReset">清空</span></div>
+      <div class="stats-empty" id="statsEmpty">暂无战绩记录</div>
+      <table class="stats-table" id="statsTable" style="display:none">
+        <thead><tr><th>#</th><th>分数</th><th>食物</th><th>难度</th><th>结果</th></tr></thead>
+        <tbody id="statsBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -228,6 +301,21 @@ const COLOR = {
   food:  '#f87171',
   wall:  '#3a3050'      // 障碍物颜色
 };
+
+/* ---------- 2.1 皮肤系统 ---------- */
+const SKINS = {
+  classic: { name:'经典绿', bg:'#0b0d12', grid:'#13161d', snake:'#4ade80', head:'#22c55e', food:'#f87171', wall:'#3a3050' },
+  ocean:   { name:'海洋蓝', bg:'#0a1628', grid:'#0f1f3a', snake:'#38bdf8', head:'#0ea5e9', food:'#fbbf24', wall:'#1e3a5f' },
+  sunset:  { name:'日落橙', bg:'#1a1210', grid:'#241a15', snake:'#fb923c', head:'#f97316', food:'#facc15', wall:'#4a3028' },
+  purple:  { name:'紫夜',   bg:'#120f1a', grid:'#1a1525', snake:'#a78bfa', head:'#8b5cf6', food:'#f472b6', wall:'#2a2040' },
+  sakura:  { name:'樱花粉', bg:'#1a1218', grid:'#241820', snake:'#f472b6', head:'#ec4899', food:'#a78bfa', wall:'#3a2535' },
+  cyber:   { name:'赛博',   bg:'#0a0a0a', grid:'#111a11', snake:'#00ff88', head:'#00cc66', food:'#ff00ff', wall:'#1a1a2e' }
+};
+
+/* ---------- 2.2 背景干扰模式 ---------- */
+const BG_MODES = ['none','stripes','dots','checker','noise'];
+let currentSkin = 'classic';
+let currentBgMode = 'none';
 
 /* ---------- 2.5 难度配置 ---------- */
 const DIFFICULTY = {
@@ -268,6 +356,50 @@ const AI_STARVE_LIMIT = 350; // 连续 350 步没吃到食物 → 启动饥饿�
 let currentDiff = 'normal';               // 当前难度
 let obstacles   = [];                      // 障碍物数组
 let currentSpeed = DIFFICULTY.normal.speed; // 当前实际速度（会渐进加速）
+
+/* ---------- 3.7 多局战绩 ---------- */
+let statsHistory = [];  // [{round, score, eaten, diff, result, date}]
+const STATS_KEY = 'snake_stats_history';
+const STATS_MAX = 10;
+
+function loadStats() {
+  try { statsHistory = JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); }
+  catch(e) { statsHistory = []; }
+}
+function saveStats() {
+  localStorage.setItem(STATS_KEY, JSON.stringify(statsHistory));
+}
+function addStat(score, eaten, diff, result) {
+  const round = (statsHistory.length > 0 ? Math.max(...statsHistory.map(s => s.round)) : 0) + 1;
+  statsHistory.push({
+    round, score, eaten,
+    diff: DIFFICULTY[diff].label,
+    result,
+    date: new Date().toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' })
+  });
+  while (statsHistory.length > STATS_MAX) statsHistory.shift();
+  // 重新编号
+  statsHistory.forEach((s, i) => s.round = i + 1);
+  saveStats();
+  renderStats();
+}
+function renderStats() {
+  const empty = $('statsEmpty'), table = $('statsTable'), body = $('statsBody');
+  if (statsHistory.length === 0) {
+    empty.style.display = 'block'; table.style.display = 'none';
+  } else {
+    empty.style.display = 'none'; table.style.display = '';
+    body.innerHTML = statsHistory.slice().reverse().map(s =>
+      `<tr>
+        <td>${s.round}</td>
+        <td>${s.score}</td>
+        <td>${s.eaten}</td>
+        <td style="font-size:10px">${s.diff}</td>
+        <td class="${s.result === '通关' ? 'st-win' : 'st-lose'}">${s.result}</td>
+      </tr>`
+    ).join('');
+  }
+}
 
 /* ---------- 4. 小工具函数 ---------- */
 const key    = p => p.x + ',' + p.y;
@@ -328,11 +460,61 @@ function reset() {
 }
 
 /* ---------- 7. 画棋盘 ---------- */
-function draw() {
-  ctx.fillStyle = COLOR.bg;
+function drawBgPattern() {
+  const skin = SKINS[currentSkin];
+  ctx.fillStyle = skin.bg;
   ctx.fillRect(0, 0, cv.width, cv.height);
 
-  ctx.strokeStyle = COLOR.grid;
+  if (currentBgMode === 'none') return;
+
+  const w = cv.width, h = cv.height;
+  if (currentBgMode === 'stripes') {
+    const stripeH = 12;
+    for (let y = 0; y < h; y += stripeH) {
+      ctx.fillStyle = (Math.floor(y / stripeH) % 2 === 0) ? skin.grid : skin.bg;
+      ctx.fillRect(0, y, w, stripeH);
+    }
+  } else if (currentBgMode === 'dots') {
+    for (let x = 10; x < w; x += 20) {
+      for (let y = 10; y < h; y += 20) {
+        ctx.fillStyle = skin.grid;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else if (currentBgMode === 'checker') {
+    const sz = 10;
+    for (let x = 0; x < w / sz; x++) {
+      for (let y = 0; y < h / sz; y++) {
+        if ((x + y) % 2 === 0) {
+          ctx.fillStyle = skin.grid;
+          ctx.fillRect(x * sz, y * sz, sz, sz);
+        }
+      }
+    }
+  } else if (currentBgMode === 'noise') {
+    const imageData = ctx.createImageData(w, h);
+    const baseR = parseInt(skin.bg.slice(1,3), 16);
+    const baseG = parseInt(skin.bg.slice(3,5), 16);
+    const baseB = parseInt(skin.bg.slice(5,7), 16);
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const v = Math.floor(Math.random() * 30 - 15);
+      imageData.data[i]     = Math.max(0, Math.min(255, baseR + v));
+      imageData.data[i + 1] = Math.max(0, Math.min(255, baseG + v));
+      imageData.data[i + 2] = Math.max(0, Math.min(255, baseB + v));
+      imageData.data[i + 3] = 255;
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+}
+
+function draw() {
+  drawBgPattern();
+
+  const skin = SKINS[currentSkin];
+
+  ctx.strokeStyle = skin.grid;
   ctx.lineWidth = 1;
   for (let i = 0; i <= COLS; i++) {
     ctx.beginPath(); ctx.moveTo(i*CELL, 0); ctx.lineTo(i*CELL, cv.height); ctx.stroke();
@@ -342,7 +524,7 @@ function draw() {
   }
 
   if (food) {
-    ctx.fillStyle = COLOR.food;
+    ctx.fillStyle = skin.food;
     ctx.beginPath();
     ctx.arc(food.x*CELL + CELL/2, food.y*CELL + CELL/2, CELL/2 - 3, 0, Math.PI*2);
     ctx.fill();
@@ -350,9 +532,8 @@ function draw() {
 
   // 障碍物
   obstacles.forEach(o => {
-    ctx.fillStyle = COLOR.wall;
+    ctx.fillStyle = skin.wall;
     ctx.fillRect(o.x*CELL + 2, o.y*CELL + 2, CELL - 4, CELL - 4);
-    // 画叉号
     ctx.strokeStyle = '#6b5b7a';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -364,7 +545,7 @@ function draw() {
   });
 
   snake.forEach((s, i) => {
-    ctx.fillStyle = (i === 0) ? COLOR.head : COLOR.snake;
+    ctx.fillStyle = (i === 0) ? skin.head : skin.snake;
     ctx.fillRect(s.x*CELL + 1, s.y*CELL + 1, CELL - 2, CELL - 2);
   });
 }
@@ -438,6 +619,7 @@ function step() {
       setState('通关');
       updateHUD();
       updateAIHUD();
+      if (!aiMode) addStat(score, eaten, currentDiff, '通关');
       return;
     }
   } else {
@@ -465,6 +647,8 @@ function gameOver(reason) {
   setState('已结束');
   updateHUD();
   updateAIHUD();
+  // 手动模式记录战绩
+  if (!aiMode) addStat(score, eaten, currentDiff, reason.includes('通关') ? '通关' : '阵亡');
 }
 
 /* ---------- 10. 开始 / 停止 ---------- */
@@ -795,7 +979,7 @@ document.addEventListener('keydown', e => {
   e.preventDefault();
 });
 
-/* ---------- 13.5 移动端虚拟方向键（触摸） ---------- */
+/* ---------- 13.5 移动端虚拟方向键 ---------- */
 const DPAD_MAP = {
   up:    { x: 0, y:-1 },
   down:  { x: 0, y: 1 },
@@ -808,7 +992,6 @@ document.querySelectorAll('.dpad-btn').forEach(btn => {
     e.preventDefault();
     e.stopPropagation();
 
-    // 中间按钮 = 开始/暂停
     if (btn.dataset.dir === 'space') {
       if (!alive) { reset(); start(); }
       else if (running) { stop(); setState('已暂停'); }
@@ -816,7 +999,6 @@ document.querySelectorAll('.dpad-btn').forEach(btn => {
       return;
     }
 
-    // AI 模式下禁止方向输入
     if (aiMode) return;
 
     const nd = DPAD_MAP[btn.dataset.dir];
@@ -824,18 +1006,46 @@ document.querySelectorAll('.dpad-btn').forEach(btn => {
     if (snake.length > 1 && nd.x === -dir.x && nd.y === -dir.y) return;
     nextDir = nd;
 
-    // 按压反馈
     btn.classList.add('pressed');
     setTimeout(() => btn.classList.remove('pressed'), 120);
   });
 
-  // 阻止双击缩放
   btn.addEventListener('touchstart', e => {
     e.preventDefault();
   });
 });
 
+/* ---------- 13.6 皮肤切换 ---------- */
+document.querySelectorAll('.skin-btn').forEach(btn => {
+  btn.onclick = () => {
+    if (aiMode) return;
+    currentSkin = btn.dataset.skin;
+    document.querySelectorAll('.skin-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    draw();
+  };
+});
+
+/* ---------- 13.7 背景模式切换 ---------- */
+document.querySelectorAll('.bg-btn').forEach(btn => {
+  btn.onclick = () => {
+    currentBgMode = btn.dataset.bg;
+    document.querySelectorAll('.bg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    draw();
+  };
+});
+
+/* ---------- 13.8 清空战绩 ---------- */
+$('btnStatsReset').onclick = () => {
+  statsHistory = [];
+  saveStats();
+  renderStats();
+};
+
 /* ---------- 14. 启动 ---------- */
+loadStats();
+renderStats();
 reset();
 </script>
 </body>
