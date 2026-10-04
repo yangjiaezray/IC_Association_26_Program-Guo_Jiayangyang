@@ -14,14 +14,24 @@
   }
   h1{font-size:20px;margin:0 0 14px;letter-spacing:1px}
 
-  .wrap{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .wrap{display:flex;gap:14px;justify-content:center;align-items:flex-start}
   canvas{background:#0b0d12;border:1px solid #2a2f3a;border-radius:8px;display:block}
 
-  .panel{
-    width:240px;background:#171a21;border:1px solid #2a2f3a;
-    border-radius:8px;padding:16px;
+  /* 左侧提示栏 */
+  .tips-col{
+    width:175px;background:#171a21;border:1px solid #2a2f3a;
+    border-radius:8px;padding:14px;flex-shrink:0;
   }
-  .row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:10px}
+  .tips-col .tip{font-size:12px;color:#8b93a7;line-height:1.85;margin-top:0}
+  .tips-col .tip b{color:#e6e6e6}
+  .tips-col .tip-title{font-size:13px;color:#4ade80;font-weight:bold;margin-bottom:8px}
+
+  /* 右侧控制面板 */
+  .panel{
+    width:195px;background:#171a21;border:1px solid #2a2f3a;
+    border-radius:8px;padding:14px;flex-shrink:0;
+  }
+  .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:9px}
   .row .val{color:#4ade80;font-weight:bold}
 
   button{
@@ -40,7 +50,7 @@
   }
   .btn-ai.active:hover{background:#3cc96e}
 
-  .tip{font-size:12px;color:#8b93a7;line-height:1.9;margin-top:10px}
+  .tip{font-size:12px;color:#8b93a7;line-height:1.9}
   .tip b{color:#e6e6e6}
 
   .board{position:relative}
@@ -55,7 +65,7 @@
 
   .ai-progress{
     background:#1a231e;border:1px solid #2d5a3d;border-radius:6px;
-    padding:10px 12px;margin-bottom:12px;
+    padding:10px 12px;margin-top:10px;
   }
   .ai-progress .label{font-size:12px;color:#8b93a7;margin-bottom:4px}
   .ai-progress .value{font-size:18px;font-weight:bold;color:#4ade80}
@@ -77,9 +87,9 @@
   .diff-btn.active{background:#1a3a2a;border-color:#2d5a3d;color:#4ade80;font-weight:bold}
   .diff-btn.disabled{opacity:.4;pointer-events:none}
 
-  /* 移动端虚拟方向键 */
+  /* 移动端虚拟方向键（始终可见，桌面亦可点击） */
   .dpad{
-    display:none;margin-top:12px;user-select:none;-webkit-user-select:none;
+    margin-top:10px;user-select:none;-webkit-user-select:none;
     touch-action:manipulation;
   }
   .dpad-row{display:flex;justify-content:center;gap:6px;margin-bottom:6px}
@@ -93,15 +103,15 @@
   .dpad-btn:active,.dpad-btn.pressed{background:#343a48;color:#4ade80;border-color:#4ade80}
   .dpad-center{width:56px;height:56px;border-radius:50%;background:transparent}
 
-  /* 响应式：手机竖屏 */
-  @media(max-width:700px){
+  /* 响应式：平板/手机 - 三栏堆叠 */
+  @media(max-width:850px){
     body{justify-content:flex-start;padding:10px}
-    h1{font-size:17px;margin-bottom:10px}
+    h1{font-size:17px;margin-bottom:8px}
     .wrap{flex-direction:column;align-items:center;width:100%;max-width:420px}
     .board{display:flex;flex-direction:column;align-items:center}
     canvas{width:100%;max-width:380px;height:auto;aspect-ratio:1/1}
-    .panel{width:100%;max-width:380px}
-    .dpad{display:block}
+    .tips-col{width:100%;max-width:380px;flex-shrink:1;order:2}
+    .panel{width:100%;max-width:380px;flex-shrink:1}
     .dpad-btn{width:48px;height:48px;font-size:20px;border-radius:8px}
     .dpad-center{width:48px;height:48px}
     button{padding:11px;font-size:15px}
@@ -114,6 +124,26 @@
 <h1>🐍 贪吃蛇 · 阶段二（难度选择 + 手动 + AI）</h1>
 
 <div class="wrap">
+  <!-- 左栏：操作提示 -->
+  <div class="tips-col">
+    <div class="tip-title">🎮 操作说明</div>
+    <div class="tip">
+      <div><b>方向键</b> 或 <b>WASD</b> 控制</div>
+      <div><b>空格</b> 开始 / 暂停</div>
+      <div>📱 手机使用<b>下方虚拟键</b></div>
+      <div style="margin-top:6px;color:#4ade80;font-weight:bold;">⚙️ 机制说明</div>
+      <div>⚡ 上方选择难度（速度/倍率）</div>
+      <div>⏩ 每吃 <b>5</b> 个食物自动加速</div>
+      <div>🧱 蛇 &lt; 8 节时出现<b>障碍物</b></div>
+      <div>💥 撞障碍物：变短 2 节 + 扣分</div>
+      <div>🤖 AI 自动寻路演示</div>
+      <div>🎯 AI 目标：连吃 <b>15</b> 个食物</div>
+      <div>❌ 撞墙/撞自己即结束</div>
+      <div>🍎 食物 +10 分 × 难度倍率</div>
+    </div>
+  </div>
+
+  <!-- 中栏：游戏画布 + 移动端方向键 -->
   <div class="board">
     <canvas id="cv" width="400" height="400"></canvas>
     <div class="mask" id="mask">
@@ -140,6 +170,7 @@
     </div>
   </div>
 
+  <!-- 右栏：控制面板 -->
   <div class="panel">
     <div class="row"><span>当前分数</span><span class="val" id="score">0</span></div>
     <div class="row"><span>已吃食物</span><span class="val" id="eaten">0</span></div>
@@ -149,7 +180,7 @@
 
     <div class="row"><span>当前速度</span><span class="val" id="speed">120ms</span></div>
 
-    <hr style="border:none;border-top:1px solid #2a2f3a;margin:14px 0">
+    <hr style="border:none;border-top:1px solid #2a2f3a;margin:12px 0">
 
     <div class="diff-row" id="diffRow">
       <button class="diff-btn" data-diff="easy">🟢 简单</button>
@@ -162,22 +193,8 @@
     <button id="btnReset">重新开始</button>
     <button id="btnAI" class="btn-ai">🤖 AI 自动演示</button>
 
-    <!-- 提示移到这里，不用滚动就能看到 -->
-    <div class="tip">
-      <div>🎮 <b>方向键</b> 或 <b>WASD</b> 控制方向</div>
-      <div>⏸ <b>空格</b> 开始 / 暂停</div>
-      <div>📱 手机上使用下方 <b>虚拟方向键</b></div>
-      <div>⚡ 上方选择难度，越难速度越快、分数倍率越高</div>
-      <div>⏩ 每吃 5 个食物，蛇自动加速</div>
-      <div>🧱 <b>蛇短时</b>（&lt; 8 节）场上会出现障碍物，碰到蛇变短</div>
-      <div>🤖 <b>AI 演示</b> 自动寻路吃食物</div>
-      <div>🎯 AI 目标：连续吃完 <b>15</b> 个食物不死</div>
-      <div>❌ <b>撞墙</b> 或 <b>撞到自己</b> 即结束</div>
-      <div>🍎 吃一个食物 <b>+10 分</b>（× 难度倍率），蛇身变长 1 节</div>
-    </div>
-
-    <!-- AI 进度放最底部（AI 模式下才重要） -->
-    <div class="ai-progress" id="aiBox" style="margin-top:12px;">
+    <!-- AI 进度条 -->
+    <div class="ai-progress" id="aiBox">
       <div class="label">🤖 AI 本轮已吃</div>
       <div class="value"><span id="aiEaten">0</span> / <span id="aiTarget">15</span></div>
       <div class="bar-bg"><div class="bar-fill" id="aiBar" style="width:0%"></div></div>
