@@ -388,9 +388,50 @@ for freq_hz, label in zip(test_freqs, test_labels):
     print(f"    理论增益 = {gain_theory:.4f}")
     print(f"    相对误差 = {abs(gain_actual - gain_theory)/gain_theory*100:.3f} %")
 
-# ===================== 4. 绘图 =====================
+# ===================== 4. 瞬态分析 —— 方波响应 =====================
 print("\n" + "=" * 60)
-print("第4部分：生成图表")
+print("第4部分：方波瞬态响应 —— 观察 RC 周期充放电")
+print("=" * 60)
+
+def build_rc_square(freq_hz=50):
+    """
+    构建方波激励的RC电路。
+
+    参数：
+      freq_hz : 方波频率（Hz），选 50Hz << fc=159Hz，
+                周期 T=20ms，高电平 10ms = 10τ，充足充放电。
+    """
+    c = Circuit('RC_Square_Wave')
+    period = 1.0 / freq_hz
+    # PULSE: V1=0, V2=1, TD=0.5ms, TR=1ns, TF=1ns, PW=T/2, PER=T
+    c.PulseVoltageSource('1', 'n_in', c.gnd,
+                         initial_value=0@u_V,
+                         pulsed_value=1@u_V,
+                         delay_time=0.5e-3@u_s,
+                         rise_time=1e-9@u_s,
+                         fall_time=1e-9@u_s,
+                         pulse_width=(period/2)@u_s,
+                         period=period@u_s)
+    c.R('1', 'n_in', 'out', R_val @ u_Ohm)
+    c.C('1', 'out', c.gnd, C_val @ u_F)
+    return c
+
+circuit_square = build_rc_square(freq_hz=50)
+sim_sq = circuit_square.simulator(temperature=25, nominal_temperature=25)
+# 仿真 3 个周期：3 × 20ms = 60ms，步长 20μs
+t_end_sq = 60e-3
+analysis_sq = sim_sq.transient(step_time=20e-6@u_s, end_time=t_end_sq@u_s)
+time_sq = np.array(analysis_sq.time)
+v_in_sq = np.array(analysis_sq['n_in'])
+v_out_sq = np.array(analysis_sq['out'])
+
+print(f"  方波频率 = 50 Hz (周期 T = 20 ms)")
+print(f"  τ = RC = {tau_theory*1e3:.1f} ms, 高电平持续时间 = 10 ms = {10/tau_theory*1e3:.0f}τ")
+print(f"  在 10τ 高电平内，充电到 {(1-np.exp(-10))*100:.2f}%")
+
+# ===================== 5. 绘图 =====================
+print("\n" + "=" * 60)
+print("第5部分：生成图表")
 print("=" * 60)
 
 # ---------- 图1：波特图（幅频 + 相频） ----------
@@ -503,9 +544,54 @@ plt.tight_layout()
 plt.savefig('rc_filter_transient.png', dpi=170)
 print("  ✓ 已保存 rc_filter_transient.png (正弦瞬态响应)")
 
-# ===================== 5. 导出 CSV 数据 =====================
+# ---------- 图4：方波瞬态响应 ----------
+fig, (ax_sq1, ax_sq2) = plt.subplots(2, 1, figsize=(10, 7))
+
+# 上子图：完整 3 周期
+ax_sq1.plot(time_sq * 1e3, v_in_sq, 'gray', lw=1.5, alpha=0.7, label='Input (50 Hz square wave)')
+ax_sq1.plot(time_sq * 1e3, v_out_sq, 'b-', lw=2.0, label='Output (RC charge/discharge)')
+ax_sq1.set_xlabel('Time (ms)', fontsize=11)
+ax_sq1.set_ylabel('Voltage (V)', fontsize=11)
+ax_sq1.set_title('RC Low-Pass Filter: Square Wave Response (50 Hz, T = 20 ms)', fontsize=12)
+ax_sq1.legend(fontsize=9)
+ax_sq1.grid(True, alpha=0.35)
+ax_sq1.set_xlim(0, 60)
+
+# 下子图：放大最后一个周期，标注 τ
+t_zoom_start = 40  # ms
+mask_sq = (time_sq * 1e3 >= t_zoom_start) & (time_sq * 1e3 <= 60)
+t_z = time_sq[mask_sq] * 1e3
+v_out_z = v_out_sq[mask_sq]
+
+ax_sq2.plot(t_z, v_out_z, 'b-', lw=2.0, label='Output (zoomed)')
+# 标注 τ = 1ms 充电线
+tau_ms = tau_theory * 1e3
+for i in range(2):  # 标注充电段
+    t_rise_start = 40.5 + i * 20  # 方波上升沿在 ~40.5, 60.5 ms
+    if t_rise_start < 60:
+        t_tau = t_rise_start + tau_ms
+        v_tau = 1 - np.exp(-1)  # 0.632
+        ax_sq2.axvline(t_tau, color='red', ls='--', lw=1.0, alpha=0.6)
+        ax_sq2.plot(t_tau, v_tau, 'ro', ms=6, zorder=5)
+        ax_sq2.annotate(f'τ={tau_ms:.0f}ms\n({v_tau*100:.1f}%)',
+                       xy=(t_tau, v_tau),
+                       xytext=(t_tau + 2, v_tau + 0.15),
+                       fontsize=9, color='darkred',
+                       arrowprops=dict(arrowstyle='->', color='darkred'))
+
+ax_sq2.set_xlabel('Time (ms)', fontsize=11)
+ax_sq2.set_ylabel('Voltage (V)', fontsize=11)
+ax_sq2.set_title(f'Zoomed: One Cycle (τ=RC={tau_ms:.0f}ms, charge to 63.2% per τ)', fontsize=12)
+ax_sq2.legend(fontsize=9)
+ax_sq2.grid(True, alpha=0.35)
+
+plt.tight_layout()
+plt.savefig('rc_filter_square.png', dpi=170)
+print("  ✓ 已保存 rc_filter_square.png (方波瞬态响应)")
+
+# ===================== 6. 导出 CSV 数据 =====================
 print("\n" + "=" * 60)
-print("第5部分：导出数据")
+print("第6部分：导出数据")
 print("=" * 60)
 
 import csv
@@ -526,9 +612,9 @@ with open(csv_path, 'w', newline='', encoding='utf-8-sig') as f:
         ])
 print(f"  ✓ 已保存 {csv_path} ({len(freq_sim)} 行 x 7 列)")
 
-# ===================== 6. 最终汇总对比表 =====================
+# ===================== 7. 最终汇总对比表 =====================
 print("\n" + "=" * 60)
-print("最终汇总：手算 vs 仿真 对比表")
+print("第7部分：最终汇总：手算 vs 仿真 对比表")
 print("=" * 60)
 
 print(f"""
@@ -557,6 +643,7 @@ print(f"""
   rc_filter_bode.png     — 波特图（幅频 + 相频特性）
   rc_filter_step.png     — 阶跃响应（时域充放电曲线）
   rc_filter_transient.png — 正弦瞬态响应（通带/截止/阻带三频率对比）
+  rc_filter_square.png   — 方波瞬态响应（周期充放电 + τ标注）
   rc_filter_data.csv     — AC 频率扫描原始数据（可直接导入 Excel）
 """)
 
